@@ -75,12 +75,18 @@ int TLC59116Manager::init() {
   int numfound = scan();       // could also use this->device_ct but direct return may be preferable
 
 
-  if (numfound != 0) {
-    if (reset_actions & Reset) {
-      // DEVELOPER NOTE: 12/3/2018 Traced the startup issue down to this next line.
-      reset();  // does enable
-      }
-  }
+    /**
+     * 12/4/2018 AFTER A FEW DAYS OF TRACING, REBOOTING, DEBUGGING, I GIVE UP.  The reset() function
+     * just isn't needed on a fresh boot, but using it causes also sorts of weird glitches
+     * and slow startup.   Worse, these things don't manifest with connected on serial port, so it
+     * makes it really hard to track down.   
+     */
+//  if (numfound != 0) {
+//    if (reset_actions & Reset) {
+//      // DEVELOPER NOTE: 12/3/2018 Traced the startup issue down to this next line.
+//      reset();
+//      }
+//  }
 
   WARN(F("Init complete i2cbus "));WARN((unsigned long)&(this->i2cbus), HEX); WARN();
   return numfound;
@@ -142,6 +148,12 @@ int TLC59116Manager::scan() {
   return this->device_ct;
   }
 
+
+/**
+ * 12/4/2018 -- i recommend against using this method.  It's weird and seems to cause startup
+ * issues and delays that don't make sense.  Things seem to startup just fine without it.
+ * @return
+ */
 int TLC59116Manager::reset() {
   WARN(F("TLCMgr reset()"));WARN();
   i2cbus.beginTransmission(TLC59116_Unmanaged::Reset_Addr);
@@ -158,19 +170,37 @@ int TLC59116Manager::reset() {
 
   WARN(F("Reset worked!")); WARN();
 
-  // DEVELOPER NOTE:  12/3/2018  I commented out the next line as it was causing my
+
+
+//------------------------COMMENTED OUT 12/3/2018---------------------------
+// I find that the following blocks of code were presenting startup issues. The
+// symptoms are:  crashing on startup, long (10second) delays when not connected to serial
+// or just other weird issues.  I also noted that everything starts up just fine
+//  WITHOUT the following code....so comment it out and move on.
+
+    // DEVELOPER NOTE:  12/3/2018  I commented out the next line as it was causing my
     // ATMega2560 to crash.  Not sure why...but the program appears fine without it.
     //  The following for loop was already there adn seems to duplicate the functionality.
-  //broadcast().reset_happened();
+    //broadcast().reset_happened();
 
-  for (byte i=0; i< device_ct; i++) {
-      devices[i]->reset_happened();
-  }
+    // This block seems to do the same as above...redundant.
+//  for (byte i=0; i< device_ct; i++) {
+//      devices[i]->reset_happened();
+//  }
 
-  TLC59116Dev(F("Reset signalled to all"));TLC59116Dev();
-  if (this->reset_actions & EnableOutputs) {
-    broadcast().enable_outputs();
-    }
+//  TLC59116Dev(F("Reset signalled to all"));TLC59116Dev();
+//    // DEVELOPER NOTE 12/4/2018
+//    // THE FOLLOWING BLOCK OF CODE CAN TAKE 5-10SECONDS TO INITIALIZE....why so slow?
+//    // The problem is that with a serial connection, startup is instant...why the difference?
+//    // If you have the ->reset_happened() line, you MUST have the next set of lines.
+//  if (this->reset_actions & EnableOutputs) {
+//      //broadcast().enable_outputs(true, false);  // enable all?,  with_delay?
+//      for (byte i=0; i< device_ct; i++) {
+//          devices[i]->enable_outputs(true, false);
+//      }
+//  }
+//----------------------------------------------------------------------------------
+
   return 0;
   }
 
@@ -179,8 +209,10 @@ TLC59116& TLC59116::enable_outputs(bool yes, bool with_delay) {
   if (yes) {
     WARN(F("Enable outputs for "));WARN(address(),HEX);WARN();
     modify_control_register(MODE1_Register,MODE1_OSC_mask, 0x00); // bits off is osc on
-    if (with_delay) delayMicroseconds(500); // would be nice to be smarter about when to do this
+    if (with_delay) {
+        delayMicroseconds(500);  // would be nice to be smarter about when to do this
     }
+  }
   else {
     WARN(F("Disable outputs for "));WARN(address(),HEX);WARN();
     modify_control_register(MODE1_Register,MODE1_OSC_mask, MODE1_OSC_mask); // bits on is osc off
