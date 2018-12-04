@@ -79,7 +79,7 @@ int TLC59116Manager::init() {
      * 12/4/2018 AFTER A FEW DAYS OF TRACING, REBOOTING, DEBUGGING, I GIVE UP.  The reset() function
      * just isn't needed on a fresh boot, but using it causes also sorts of weird glitches
      * and slow startup.   Worse, these things don't manifest with connected on serial port, so it
-     * makes it really hard to track down.   
+     * makes it really hard to track down.
      */
 //  if (numfound != 0) {
 //    if (reset_actions & Reset) {
